@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.TextView;
 
@@ -18,7 +19,7 @@ import com.blankj.utilcode.util.SpanUtils;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2016/10/13
- *     desc  : Phone 工具类 Demo
+ *     desc  : demo about PhoneUtils
  * </pre>
  */
 public class PhoneActivity extends BaseBackActivity {
@@ -31,7 +32,7 @@ public class PhoneActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -41,7 +42,7 @@ public class PhoneActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         getToolBar().setTitle(getString(R.string.demo_phone));
 
         findViewById(R.id.btn_dial).setOnClickListener(this);
@@ -102,6 +103,7 @@ public class PhoneActivity extends BaseBackActivity {
                 break;
             case R.id.btn_call:
                 PermissionHelper.requestPhone(new PermissionHelper.OnPermissionGrantedListener() {
+                    @SuppressLint("MissingPermission")
                     @Override
                     public void onPermissionGranted() {
                         PhoneUtils.call("10000");
@@ -113,6 +115,7 @@ public class PhoneActivity extends BaseBackActivity {
                 break;
             case R.id.btn_send_sms_silent:
                 PermissionHelper.requestSms(new PermissionHelper.OnPermissionGrantedListener() {
+                    @SuppressLint("MissingPermission")
                     @Override
                     public void onPermissionGranted() {
                         PhoneUtils.sendSmsSilent("10000", "sendSmsSilent");

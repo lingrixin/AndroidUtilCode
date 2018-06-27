@@ -1,6 +1,7 @@
 package com.blankj.androidutilcode.feature.core.bar;
 
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -15,7 +16,7 @@ import com.blankj.utilcode.util.LogUtils;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2017/07/01
- *     desc  : Bar 工具类 Demo
+ *     desc  : demo about BarUtils
  * </pre>
  */
 public class BarStatusImageViewFragment extends BaseLazyFragment {
@@ -31,7 +32,7 @@ public class BarStatusImageViewFragment extends BaseLazyFragment {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
         mAlpha = 112;
     }
 
@@ -41,11 +42,11 @@ public class BarStatusImageViewFragment extends BaseLazyFragment {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
-        fakeStatusBar = view.findViewById(R.id.fake_status_bar);
-        mTvStatusAlpha = (TextView) view.findViewById(R.id.tv_status_alpha);
-        sbChangeAlpha = (SeekBar) view.findViewById(R.id.sb_change_alpha);
-        view.findViewById(R.id.btn_set_transparent).setOnClickListener(this);
+    public void initView(Bundle savedInstanceState, View contentView) {
+        fakeStatusBar = findViewById(R.id.fake_status_bar);
+        mTvStatusAlpha = findViewById(R.id.tv_status_alpha);
+        sbChangeAlpha = findViewById(R.id.sb_change_alpha);
+        findViewById(R.id.btn_set_transparent).setOnClickListener(this);
         sbChangeAlpha.setOnSeekBarChangeListener(translucentListener);
         mTvStatusAlpha.setText(String.valueOf(mAlpha));
 

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.support.annotation.Nullable;
 import android.view.View;
 
 import com.blankj.androidutilcode.R;
@@ -18,7 +19,7 @@ import java.io.File;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2016/09/29
- *     desc  : Clean 工具类 Demo
+ *     desc  : demo about CleanUtils
  * </pre>
  */
 public class CleanActivity extends BaseBackActivity {
@@ -36,7 +37,7 @@ public class CleanActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -46,7 +47,7 @@ public class CleanActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         getToolBar().setTitle(getString(R.string.demo_clean));
 
         snackBarRootView = findViewById(android.R.id.content);

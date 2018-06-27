@@ -2,6 +2,7 @@ package com.blankj.utilcode.util;
 
 import java.io.BufferedReader;
 import java.io.DataOutputStream;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.List;
 
@@ -24,63 +25,63 @@ public final class ShellUtils {
     /**
      * Execute the command.
      *
-     * @param command The command.
-     * @param isRoot  True to use root, false otherwise.
+     * @param command  The command.
+     * @param isRooted True to use root, false otherwise.
      * @return the single {@link CommandResult} instance
      */
-    public static CommandResult execCmd(final String command, final boolean isRoot) {
-        return execCmd(new String[]{command}, isRoot, true);
+    public static CommandResult execCmd(final String command, final boolean isRooted) {
+        return execCmd(new String[]{command}, isRooted, true);
     }
 
     /**
      * Execute the command.
      *
      * @param commands The commands.
-     * @param isRoot   True to use root, false otherwise.
+     * @param isRooted True to use root, false otherwise.
      * @return the single {@link CommandResult} instance
      */
-    public static CommandResult execCmd(final List<String> commands, final boolean isRoot) {
-        return execCmd(commands == null ? null : commands.toArray(new String[]{}), isRoot, true);
+    public static CommandResult execCmd(final List<String> commands, final boolean isRooted) {
+        return execCmd(commands == null ? null : commands.toArray(new String[]{}), isRooted, true);
     }
 
     /**
      * Execute the command.
      *
      * @param commands The commands.
-     * @param isRoot   True to use root, false otherwise.
+     * @param isRooted True to use root, false otherwise.
      * @return the single {@link CommandResult} instance
      */
-    public static CommandResult execCmd(final String[] commands, final boolean isRoot) {
-        return execCmd(commands, isRoot, true);
+    public static CommandResult execCmd(final String[] commands, final boolean isRooted) {
+        return execCmd(commands, isRooted, true);
     }
 
     /**
      * Execute the command.
      *
      * @param command         The command.
-     * @param isRoot          True to use root, false otherwise.
+     * @param isRooted        True to use root, false otherwise.
      * @param isNeedResultMsg True to return the message of result, false otherwise.
      * @return the single {@link CommandResult} instance
      */
     public static CommandResult execCmd(final String command,
-                                        final boolean isRoot,
+                                        final boolean isRooted,
                                         final boolean isNeedResultMsg) {
-        return execCmd(new String[]{command}, isRoot, isNeedResultMsg);
+        return execCmd(new String[]{command}, isRooted, isNeedResultMsg);
     }
 
     /**
      * Execute the command.
      *
      * @param commands        The commands.
-     * @param isRoot          True to use root, false otherwise.
+     * @param isRooted        True to use root, false otherwise.
      * @param isNeedResultMsg True to return the message of result, false otherwise.
      * @return the single {@link CommandResult} instance
      */
     public static CommandResult execCmd(final List<String> commands,
-                                        final boolean isRoot,
+                                        final boolean isRooted,
                                         final boolean isNeedResultMsg) {
         return execCmd(commands == null ? null : commands.toArray(new String[]{}),
-                isRoot,
+                isRooted,
                 isNeedResultMsg);
     }
 
@@ -88,16 +89,16 @@ public final class ShellUtils {
      * Execute the command.
      *
      * @param commands        The commands.
-     * @param isRoot          True to use root, false otherwise.
+     * @param isRooted        True to use root, false otherwise.
      * @param isNeedResultMsg True to return the message of result, false otherwise.
      * @return the single {@link CommandResult} instance
      */
     public static CommandResult execCmd(final String[] commands,
-                                        final boolean isRoot,
+                                        final boolean isRooted,
                                         final boolean isNeedResultMsg) {
         int result = -1;
         if (commands == null || commands.length == 0) {
-            return new CommandResult(result, null, null);
+            return new CommandResult(result, "", "");
         }
         Process process = null;
         BufferedReader successResult = null;
@@ -106,7 +107,7 @@ public final class ShellUtils {
         StringBuilder errorMsg = null;
         DataOutputStream os = null;
         try {
-            process = Runtime.getRuntime().exec(isRoot ? "su" : "sh");
+            process = Runtime.getRuntime().exec(isRooted ? "su" : "sh");
             os = new DataOutputStream(process.getOutputStream());
             for (String command : commands) {
                 if (command == null) continue;
@@ -120,10 +121,12 @@ public final class ShellUtils {
             if (isNeedResultMsg) {
                 successMsg = new StringBuilder();
                 errorMsg = new StringBuilder();
-                successResult = new BufferedReader(new InputStreamReader(process.getInputStream(),
-                        "UTF-8"));
-                errorResult = new BufferedReader(new InputStreamReader(process.getErrorStream(),
-                        "UTF-8"));
+                successResult = new BufferedReader(
+                        new InputStreamReader(process.getInputStream(), "UTF-8")
+                );
+                errorResult = new BufferedReader(
+                        new InputStreamReader(process.getErrorStream(), "UTF-8")
+                );
                 String line;
                 if ((line = successResult.readLine()) != null) {
                     successMsg.append(line);
@@ -141,15 +144,35 @@ public final class ShellUtils {
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            CloseUtils.closeIO(os, successResult, errorResult);
+            try {
+                if (os != null) {
+                    os.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                if (successResult != null) {
+                    successResult.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                if (errorResult != null) {
+                    errorResult.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
             if (process != null) {
                 process.destroy();
             }
         }
         return new CommandResult(
                 result,
-                successMsg == null ? null : successMsg.toString(),
-                errorMsg == null ? null : errorMsg.toString()
+                successMsg == null ? "" : successMsg.toString(),
+                errorMsg == null ? "" : errorMsg.toString()
         );
     }
 
@@ -165,6 +188,13 @@ public final class ShellUtils {
             this.result = result;
             this.successMsg = successMsg;
             this.errorMsg = errorMsg;
+        }
+
+        @Override
+        public String toString() {
+            return "result: " + result + "\n" +
+                    "successMsg: " + successMsg + "\n" +
+                    "errorMsg: " + errorMsg;
         }
     }
 }

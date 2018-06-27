@@ -3,10 +3,9 @@ package com.blankj.androidutilcode.feature.core.keyboard;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AlertDialog;
-import android.view.MotionEvent;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
 
@@ -21,7 +20,7 @@ import com.blankj.utilcode.util.SpanUtils;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2016/09/27
- *     desc  : Keyboard 工具类 Demo
+ *     desc  : demo about KeyboardUtils
  * </pre>
  */
 public class KeyboardActivity extends BaseBackActivity {
@@ -36,7 +35,7 @@ public class KeyboardActivity extends BaseBackActivity {
     private AlertDialog dialog;
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -46,9 +45,9 @@ public class KeyboardActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
+        KeyboardUtils.fixAndroidBug5497(this);
         getToolBar().setTitle(getString(R.string.demo_keyboard));
-
         etInput = findViewById(R.id.et_input);
         findViewById(R.id.btn_hide_soft_input).setOnClickListener(this);
         findViewById(R.id.btn_show_soft_input).setOnClickListener(this);
@@ -93,32 +92,38 @@ public class KeyboardActivity extends BaseBackActivity {
         }
     }
 
-    @Override
-    public boolean dispatchTouchEvent(MotionEvent ev) {
-        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
-            View v = getCurrentFocus();
-            if (isShouldHideKeyboard(v, ev)) {
-                InputMethodManager imm =
-                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-                if (imm == null) return super.dispatchTouchEvent(ev);
-                imm.hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
-            }
-        }
-        return super.dispatchTouchEvent(ev);
-    }
+//    @Override
+//    public boolean dispatchTouchEvent(MotionEvent ev) {
+//        if (ev.getAction() == MotionEvent.ACTION_DOWN) {
+//            View v = getCurrentFocus();
+//            if (isShouldHideKeyboard(v, ev)) {
+//                InputMethodManager imm =
+//                        (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+//                if (imm == null) return super.dispatchTouchEvent(ev);
+//                imm.hideSoftInputFromWindow(v.getWindowToken(), InputMethodManager.HIDE_NOT_ALWAYS);
+//            }
+//        }
+//        return super.dispatchTouchEvent(ev);
+//    }
+//
+//    // 根据 EditText 所在坐标和用户点击的坐标相对比，来判断是否隐藏键盘
+//    private boolean isShouldHideKeyboard(View v, MotionEvent event) {
+//        if (v != null && (v instanceof EditText)) {
+//            int[] l = {0, 0};
+//            v.getLocationInWindow(l);
+//            int left = l[0],
+//                    top = l[1],
+//                    bottom = top + v.getHeight(),
+//                    right = left + v.getWidth();
+//            return !(event.getX() > left && event.getX() < right
+//                    && event.getY() > top && event.getY() < bottom);
+//        }
+//        return false;
+//    }
 
-    // 根据 EditText 所在坐标和用户点击的坐标相对比，来判断是否隐藏键盘
-    private boolean isShouldHideKeyboard(View v, MotionEvent event) {
-        if (v != null && (v instanceof EditText)) {
-            int[] l = {0, 0};
-            v.getLocationInWindow(l);
-            int left = l[0],
-                    top = l[1],
-                    bottom = top + v.getHeight(),
-                    right = left + v.getWidth();
-            return !(event.getX() > left && event.getX() < right
-                    && event.getY() > top && event.getY() < bottom);
-        }
-        return false;
+    @Override
+    protected void onDestroy() {
+        KeyboardUtils.unregisterSoftInputChangedListener(this);
+        super.onDestroy();
     }
 }

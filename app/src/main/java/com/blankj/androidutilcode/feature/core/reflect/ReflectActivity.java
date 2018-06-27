@@ -3,6 +3,7 @@ package com.blankj.androidutilcode.feature.core.reflect;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.TextView;
 
@@ -16,7 +17,7 @@ import com.blankj.utilcode.util.SpanUtils;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2018/01/29
- *     desc  :
+ *     desc  : demo about ReflectUtils
  * </pre>
  */
 public class ReflectActivity extends BaseBackActivity {
@@ -27,7 +28,7 @@ public class ReflectActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -37,7 +38,7 @@ public class ReflectActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         getToolBar().setTitle(getString(R.string.demo_reflect));
 
         TextView tvAboutReflect = findViewById(R.id.tv_about_reflect);

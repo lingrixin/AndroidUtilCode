@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.graphics.Color;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.annotation.StringRes;
 import android.text.SpannableStringBuilder;
 import android.view.View;
@@ -21,7 +22,7 @@ import com.blankj.utilcode.util.ToastUtils;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2016/10/17
- *     desc  : Snackbar 工具类 Demo
+ *     desc  : demo about SnackbarUtils
  * </pre>
  */
 public class SnackbarActivity extends BaseBackActivity {
@@ -34,7 +35,7 @@ public class SnackbarActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -44,7 +45,7 @@ public class SnackbarActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         getToolBar().setTitle(getString(R.string.demo_snackbar));
 
         snackBarRootView = findViewById(android.R.id.content);

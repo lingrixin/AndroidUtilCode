@@ -3,6 +3,7 @@ package com.blankj.androidutilcode.feature.core.activity;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.view.View;
 import android.view.Window;
@@ -17,7 +18,7 @@ import java.util.Random;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2016/10/13
- *     desc  : Activity 工具类 Demo
+ *     desc  : demo about ActivityUtils
  * </pre>
  */
 public class SubActivityActivity extends BaseBackActivity {
@@ -25,7 +26,7 @@ public class SubActivityActivity extends BaseBackActivity {
     Random random = new Random();
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -38,7 +39,7 @@ public class SubActivityActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         ((View)flActivityContainer.getParent()).setBackgroundColor(Color.rgb(random.nextInt(256), random.nextInt(256), random.nextInt(256)));
     }
 

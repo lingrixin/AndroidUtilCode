@@ -1,6 +1,7 @@
 package com.blankj.androidutilcode.feature.core.bar;
 
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.support.v4.content.ContextCompat;
 import android.view.View;
 import android.widget.SeekBar;
@@ -19,7 +20,7 @@ import java.util.Random;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2017/07/01
- *     desc  : Bar 工具类 Demo
+ *     desc  : demo about BarUtils
  * </pre>
  */
 public class BarStatusColorFragment extends BaseLazyFragment {
@@ -37,7 +38,7 @@ public class BarStatusColorFragment extends BaseLazyFragment {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
         mRandom = new Random();
         mColor = ContextCompat.getColor(UtilsApp.getInstance(), R.color.colorPrimary);
         mAlpha = 112;
@@ -49,12 +50,12 @@ public class BarStatusColorFragment extends BaseLazyFragment {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
-        fakeStatusBar = view.findViewById(R.id.fake_status_bar);
-        view.findViewById(R.id.btn_random_color).setOnClickListener(this);
-        view.findViewById(R.id.btn_set_transparent).setOnClickListener(this);
-        mTvStatusAlpha = (TextView) view.findViewById(R.id.tv_status_alpha);
-        sbChangeAlpha = (SeekBar) view.findViewById(R.id.sb_change_alpha);
+    public void initView(Bundle savedInstanceState, View contentView) {
+        fakeStatusBar = findViewById(R.id.fake_status_bar);
+        findViewById(R.id.btn_random_color).setOnClickListener(this);
+        findViewById(R.id.btn_set_transparent).setOnClickListener(this);
+        mTvStatusAlpha = findViewById(R.id.tv_status_alpha);
+        sbChangeAlpha = findViewById(R.id.sb_change_alpha);
         sbChangeAlpha.setOnSeekBarChangeListener(colorListener);
         mTvStatusAlpha.setText(String.valueOf(mAlpha));
 

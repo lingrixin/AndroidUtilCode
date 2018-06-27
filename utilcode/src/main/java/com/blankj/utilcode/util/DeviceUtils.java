@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.PowerManager;
 import android.provider.Settings;
 import android.support.annotation.RequiresPermission;
+import android.text.TextUtils;
 
 import java.io.File;
 import java.net.InetAddress;
@@ -75,10 +76,11 @@ public final class DeviceUtils {
      */
     @SuppressLint("HardwareIds")
     public static String getAndroidID() {
-        return Settings.Secure.getString(
+        String id = Settings.Secure.getString(
                 Utils.getApp().getContentResolver(),
                 Settings.Secure.ANDROID_ID
         );
+        return id == null ? "" : id;
     }
 
     /**
@@ -91,23 +93,48 @@ public final class DeviceUtils {
      */
     @RequiresPermission(allOf = {ACCESS_WIFI_STATE, INTERNET})
     public static String getMacAddress() {
+        return getMacAddress((String[]) null);
+    }
+
+    /**
+     * Return the MAC address.
+     * <p>Must hold
+     * {@code <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />},
+     * {@code <uses-permission android:name="android.permission.INTERNET" />}</p>
+     *
+     * @return the MAC address
+     */
+    @RequiresPermission(allOf = {ACCESS_WIFI_STATE, INTERNET})
+    public static String getMacAddress(final String... excepts) {
         String macAddress = getMacAddressByWifiInfo();
-        if (!"02:00:00:00:00:00".equals(macAddress)) {
+        if (isAddressNotInExcepts(macAddress, excepts)) {
             return macAddress;
         }
         macAddress = getMacAddressByNetworkInterface();
-        if (!"02:00:00:00:00:00".equals(macAddress)) {
+        if (isAddressNotInExcepts(macAddress, excepts)) {
             return macAddress;
         }
         macAddress = getMacAddressByInetAddress();
-        if (!"02:00:00:00:00:00".equals(macAddress)) {
+        if (isAddressNotInExcepts(macAddress, excepts)) {
             return macAddress;
         }
         macAddress = getMacAddressByFile();
-        if (!"02:00:00:00:00:00".equals(macAddress)) {
+        if (isAddressNotInExcepts(macAddress, excepts)) {
             return macAddress;
         }
-        return "please open wifi";
+        return "";
+    }
+
+    private static boolean isAddressNotInExcepts(final String address, final String... excepts) {
+        if (excepts == null || excepts.length == 0) {
+            return !"02:00:00:00:00:00".equals(address);
+        }
+        for (String filter : excepts) {
+            if (address.equals(filter)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @SuppressLint({"HardwareIds", "MissingPermission"})
@@ -231,6 +258,23 @@ public final class DeviceUtils {
             model = "";
         }
         return model;
+    }
+
+    /**
+     * Return an ordered list of ABIs supported by this device. The most preferred ABI is the first
+     * element in the list.
+     *
+     * @return an ordered list of ABIs supported by this device
+     */
+    public static String[] getABIs() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            return Build.SUPPORTED_ABIS;
+        } else {
+            if (!TextUtils.isEmpty(Build.CPU_ABI2)) {
+                return new String[]{Build.CPU_ABI, Build.CPU_ABI2};
+            }
+            return new String[]{Build.CPU_ABI};
+        }
     }
 
     /**

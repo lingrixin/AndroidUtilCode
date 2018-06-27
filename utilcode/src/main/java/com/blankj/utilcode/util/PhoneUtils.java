@@ -8,6 +8,7 @@ import android.os.Build;
 import android.support.annotation.RequiresPermission;
 import android.telephony.SmsManager;
 import android.telephony.TelephonyManager;
+import android.text.TextUtils;
 
 import java.util.List;
 
@@ -52,7 +53,30 @@ public final class PhoneUtils {
     public static String getDeviceId() {
         TelephonyManager tm =
                 (TelephonyManager) Utils.getApp().getSystemService(Context.TELEPHONY_SERVICE);
-        return tm != null ? tm.getDeviceId() : null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            if (tm == null) return "";
+            String imei = tm.getImei();
+            if (!TextUtils.isEmpty(imei)) return imei;
+            String meid = tm.getMeid();
+            return TextUtils.isEmpty(meid) ? "" : meid;
+
+        }
+        return tm != null ? tm.getDeviceId() : "";
+    }
+
+    /**
+     * Return the serial of device.
+     *
+     * @return the serial of device
+     */
+    @SuppressLint("HardwareIds")
+    @RequiresPermission(READ_PHONE_STATE)
+    public static String getSerial() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            return Build.getSerial();
+        } else {
+            return Build.SERIAL;
+        }
     }
 
     /**
@@ -68,9 +92,9 @@ public final class PhoneUtils {
         TelephonyManager tm =
                 (TelephonyManager) Utils.getApp().getSystemService(Context.TELEPHONY_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return tm != null ? tm.getImei() : null;
+            return tm != null ? tm.getImei() : "";
         }
-        return tm != null ? tm.getDeviceId() : null;
+        return tm != null ? tm.getDeviceId() : "";
     }
 
     /**
@@ -86,9 +110,9 @@ public final class PhoneUtils {
         TelephonyManager tm =
                 (TelephonyManager) Utils.getApp().getSystemService(Context.TELEPHONY_SERVICE);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            return tm != null ? tm.getMeid() : null;
+            return tm != null ? tm.getMeid() : "";
         } else {
-            return tm != null ? tm.getDeviceId() : null;
+            return tm != null ? tm.getDeviceId() : "";
         }
     }
 
@@ -104,7 +128,7 @@ public final class PhoneUtils {
     public static String getIMSI() {
         TelephonyManager tm =
                 (TelephonyManager) Utils.getApp().getSystemService(Context.TELEPHONY_SERVICE);
-        return tm != null ? tm.getSubscriberId() : null;
+        return tm != null ? tm.getSubscriberId() : "";
     }
 
     /**
@@ -143,7 +167,7 @@ public final class PhoneUtils {
     public static String getSimOperatorName() {
         TelephonyManager tm =
                 (TelephonyManager) Utils.getApp().getSystemService(Context.TELEPHONY_SERVICE);
-        return tm != null ? tm.getSimOperatorName() : null;
+        return tm != null ? tm.getSimOperatorName() : "";
     }
 
     /**
@@ -256,7 +280,7 @@ public final class PhoneUtils {
     @RequiresPermission(SEND_SMS)
     public static void sendSmsSilent(final String phoneNumber, final String content) {
         if (StringUtils.isEmpty(content)) return;
-        PendingIntent sentIntent = PendingIntent.getBroadcast(Utils.getApp(), 0, new Intent(), 0);
+        PendingIntent sentIntent = PendingIntent.getBroadcast(Utils.getApp(), 0, new Intent("send"), 0);
         SmsManager smsManager = SmsManager.getDefault();
         if (content.length() >= 70) {
             List<String> ms = smsManager.divideMessage(content);

@@ -3,6 +3,7 @@ package com.blankj.androidutilcode.feature.core.bar;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.support.annotation.Nullable;
 import android.view.View;
 import android.widget.TextView;
 
@@ -14,7 +15,7 @@ import com.blankj.androidutilcode.base.BaseBackActivity;
  *     author: Blankj
  *     blog  : http://blankj.com
  *     time  : 2017/05/27
- *     desc  : Bar 工具类 Demo
+ *     desc  : demo about BarUtils
  * </pre>
  */
 public class BarActivity extends BaseBackActivity {
@@ -27,7 +28,7 @@ public class BarActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initData(Bundle bundle) {
+    public void initData(@Nullable Bundle bundle) {
 
     }
 
@@ -37,7 +38,7 @@ public class BarActivity extends BaseBackActivity {
     }
 
     @Override
-    public void initView(Bundle savedInstanceState, View view) {
+    public void initView(Bundle savedInstanceState, View contentView) {
         getToolBar().setTitle(getString(R.string.demo_bar));
 
         tvAboutStatus = findViewById(R.id.tv_about_status);

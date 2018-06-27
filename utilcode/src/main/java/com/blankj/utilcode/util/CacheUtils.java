@@ -8,9 +8,10 @@ import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Parcel;
 import android.os.Parcelable;
-import android.os.Process;
 import android.support.annotation.NonNull;
 import android.support.v4.util.SimpleArrayMap;
+
+import com.blankj.utilcode.constant.CacheConstants;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -42,19 +43,18 @@ import java.util.concurrent.atomic.AtomicLong;
  *     time  : 2017/05/24
  *     desc  : utils about cache
  * </pre>
+ *
+ * @deprecated Use {@link CacheDiskUtils} instead.
  */
-public final class CacheUtils {
+@Deprecated
+public class CacheUtils implements CacheConstants {
 
     private static final long DEFAULT_MAX_SIZE  = Long.MAX_VALUE;
     private static final int  DEFAULT_MAX_COUNT = Integer.MAX_VALUE;
 
-    public static final int SEC  = 1;
-    public static final int MIN  = 60;
-    public static final int HOUR = 3600;
-    public static final int DAY  = 86400;
-
     private static final SimpleArrayMap<String, CacheUtils> CACHE_MAP = new SimpleArrayMap<>();
-    private CacheManager mCacheManager;
+    private final String           mCacheKey;
+    private final DiskCacheManager mDiskCacheManager;
 
     /**
      * Return the single {@link CacheUtils} instance.
@@ -131,24 +131,30 @@ public final class CacheUtils {
     public static CacheUtils getInstance(@NonNull final File cacheDir,
                                          final long maxSize,
                                          final int maxCount) {
-        final String cacheKey = cacheDir.getAbsoluteFile() + "_" + Process.myPid();
+        final String cacheKey = cacheDir.getAbsoluteFile() + "_" + maxCount + "_" + maxCount;
         CacheUtils cache = CACHE_MAP.get(cacheKey);
         if (cache == null) {
-            cache = new CacheUtils(cacheDir, maxSize, maxCount);
+            if (!cacheDir.exists() && !cacheDir.mkdirs()) {
+                throw new RuntimeException("can't make dirs in " + cacheDir.getAbsolutePath());
+            }
+            cache = new CacheUtils(cacheKey, new DiskCacheManager(cacheDir, maxSize, maxCount));
             CACHE_MAP.put(cacheKey, cache);
         }
         return cache;
     }
 
-    private CacheUtils(@NonNull final File cacheDir, final long maxSize, final int maxCount) {
-        if (!cacheDir.exists() && !cacheDir.mkdirs()) {
-            throw new RuntimeException("can't make dirs in " + cacheDir.getAbsolutePath());
-        }
-        mCacheManager = new CacheManager(cacheDir, maxSize, maxCount);
+    private CacheUtils(final String cacheKey, final DiskCacheManager cacheManager) {
+        mCacheKey = cacheKey;
+        mDiskCacheManager = cacheManager;
+    }
+
+    @Override
+    public String toString() {
+        return mCacheKey + "@" + Integer.toHexString(hashCode());
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // bytes io
+    // about bytes
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -157,7 +163,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final byte[] value) {
+    public void put(@NonNull final String key, final byte[] value) {
         put(key, value, -1);
     }
 
@@ -168,13 +174,13 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key, @NonNull byte[] value, final int saveTime) {
-        if (value.length <= 0) return;
-        if (saveTime >= 0) value = CacheHelper.newByteArrayWithTime(saveTime, value);
-        File file = mCacheManager.getFileBeforePut(key);
-        CacheHelper.writeFileFromBytes(file, value);
-        mCacheManager.updateModify(file);
-        mCacheManager.put(file);
+    public void put(@NonNull final String key, byte[] value, final int saveTime) {
+        if (value == null || value.length <= 0) return;
+        if (saveTime >= 0) value = DiskCacheHelper.newByteArrayWithTime(saveTime, value);
+        File file = mDiskCacheManager.getFileBeforePut(key);
+        DiskCacheHelper.writeFileFromBytes(file, value);
+        mDiskCacheManager.updateModify(file);
+        mDiskCacheManager.put(file);
     }
 
     /**
@@ -195,19 +201,19 @@ public final class CacheUtils {
      * @return the bytes if cache exists or defaultValue otherwise
      */
     public byte[] getBytes(@NonNull final String key, final byte[] defaultValue) {
-        final File file = mCacheManager.getFileIfExists(key);
+        final File file = mDiskCacheManager.getFileIfExists(key);
         if (file == null) return defaultValue;
-        byte[] data = CacheHelper.readFile2Bytes(file);
-        if (CacheHelper.isDue(data)) {
-            mCacheManager.removeByKey(key);
+        byte[] data = DiskCacheHelper.readFile2Bytes(file);
+        if (DiskCacheHelper.isDue(data)) {
+            mDiskCacheManager.removeByKey(key);
             return defaultValue;
         }
-        mCacheManager.updateModify(file);
-        return CacheHelper.getDataWithoutDueTime(data);
+        mDiskCacheManager.updateModify(file);
+        return DiskCacheHelper.getDataWithoutDueTime(data);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // String io
+    // about String
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -216,7 +222,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final String value) {
+    public void put(@NonNull final String key, final String value) {
         put(key, value, -1);
     }
 
@@ -227,8 +233,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key, @NonNull final String value, final int saveTime) {
-        put(key, CacheHelper.string2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final String value, final int saveTime) {
+        put(key, string2Bytes(value), saveTime);
     }
 
     /**
@@ -251,11 +257,11 @@ public final class CacheUtils {
     public String getString(@NonNull final String key, final String defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2String(bytes);
+        return bytes2String(bytes);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // JSONObject io
+    // about JSONObject
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -264,7 +270,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final JSONObject value) {
+    public void put(@NonNull final String key, final JSONObject value) {
         put(key, value, -1);
     }
 
@@ -276,9 +282,9 @@ public final class CacheUtils {
      * @param saveTime The save time of cache, in seconds.
      */
     public void put(@NonNull final String key,
-                    @NonNull final JSONObject value,
+                    final JSONObject value,
                     final int saveTime) {
-        put(key, CacheHelper.jsonObject2Bytes(value), saveTime);
+        put(key, jsonObject2Bytes(value), saveTime);
     }
 
     /**
@@ -301,12 +307,12 @@ public final class CacheUtils {
     public JSONObject getJSONObject(@NonNull final String key, final JSONObject defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2JSONObject(bytes);
+        return bytes2JSONObject(bytes);
     }
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // JSONArray io
+    // about JSONArray
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -315,7 +321,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final JSONArray value) {
+    public void put(@NonNull final String key, final JSONArray value) {
         put(key, value, -1);
     }
 
@@ -326,8 +332,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key, @NonNull final JSONArray value, final int saveTime) {
-        put(key, CacheHelper.jsonArray2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final JSONArray value, final int saveTime) {
+        put(key, jsonArray2Bytes(value), saveTime);
     }
 
     /**
@@ -350,12 +356,12 @@ public final class CacheUtils {
     public JSONArray getJSONArray(@NonNull final String key, final JSONArray defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2JSONArray(bytes);
+        return bytes2JSONArray(bytes);
     }
 
 
     ///////////////////////////////////////////////////////////////////////////
-    // Bitmap io
+    // about Bitmap
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -364,7 +370,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final Bitmap value) {
+    public void put(@NonNull final String key, final Bitmap value) {
         put(key, value, -1);
     }
 
@@ -375,8 +381,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key, @NonNull final Bitmap value, final int saveTime) {
-        put(key, CacheHelper.bitmap2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final Bitmap value, final int saveTime) {
+        put(key, bitmap2Bytes(value), saveTime);
     }
 
     /**
@@ -399,11 +405,11 @@ public final class CacheUtils {
     public Bitmap getBitmap(@NonNull final String key, final Bitmap defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2Bitmap(bytes);
+        return bytes2Bitmap(bytes);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // Drawable io
+    // about Drawable
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -412,8 +418,8 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final Drawable value) {
-        put(key, CacheHelper.drawable2Bytes(value));
+    public void put(@NonNull final String key, final Drawable value) {
+        put(key, value, -1);
     }
 
     /**
@@ -423,8 +429,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key, @NonNull final Drawable value, final int saveTime) {
-        put(key, CacheHelper.drawable2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final Drawable value, final int saveTime) {
+        put(key, drawable2Bytes(value), saveTime);
     }
 
     /**
@@ -447,11 +453,11 @@ public final class CacheUtils {
     public Drawable getDrawable(@NonNull final String key, final Drawable defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2Drawable(bytes);
+        return bytes2Drawable(bytes);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // Parcelable io
+    // about Parcelable
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -460,7 +466,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final Parcelable value) {
+    public void put(@NonNull final String key, final Parcelable value) {
         put(key, value, -1);
     }
 
@@ -471,10 +477,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key,
-                    @NonNull final Parcelable value,
-                    final int saveTime) {
-        put(key, CacheHelper.parcelable2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final Parcelable value, final int saveTime) {
+        put(key, parcelable2Bytes(value), saveTime);
     }
 
     /**
@@ -504,11 +508,11 @@ public final class CacheUtils {
                                final T defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2Parcelable(bytes, creator);
+        return bytes2Parcelable(bytes, creator);
     }
 
     ///////////////////////////////////////////////////////////////////////////
-    // Serializable io
+    // about Serializable
     ///////////////////////////////////////////////////////////////////////////
 
     /**
@@ -517,7 +521,7 @@ public final class CacheUtils {
      * @param key   The key of cache.
      * @param value The value of cache.
      */
-    public void put(@NonNull final String key, @NonNull final Serializable value) {
+    public void put(@NonNull final String key, final Serializable value) {
         put(key, value, -1);
     }
 
@@ -528,10 +532,8 @@ public final class CacheUtils {
      * @param value    The value of cache.
      * @param saveTime The save time of cache, in seconds.
      */
-    public void put(@NonNull final String key,
-                    @NonNull final Serializable value,
-                    final int saveTime) {
-        put(key, CacheHelper.serializable2Bytes(value), saveTime);
+    public void put(@NonNull final String key, final Serializable value, final int saveTime) {
+        put(key, serializable2Bytes(value), saveTime);
     }
 
     /**
@@ -554,7 +556,7 @@ public final class CacheUtils {
     public Object getSerializable(@NonNull final String key, final Object defaultValue) {
         byte[] bytes = getBytes(key);
         if (bytes == null) return defaultValue;
-        return CacheHelper.bytes2Object(getBytes(key));
+        return bytes2Object(getBytes(key));
     }
 
     /**
@@ -563,7 +565,7 @@ public final class CacheUtils {
      * @return the size of cache, in bytes
      */
     public long getCacheSize() {
-        return mCacheManager.getCacheSize();
+        return mDiskCacheManager.getCacheSize();
     }
 
     /**
@@ -572,7 +574,7 @@ public final class CacheUtils {
      * @return the count of cache
      */
     public int getCacheCount() {
-        return mCacheManager.getCacheCount();
+        return mDiskCacheManager.getCacheCount();
     }
 
     /**
@@ -582,7 +584,7 @@ public final class CacheUtils {
      * @return {@code true}: success<br>{@code false}: fail
      */
     public boolean remove(@NonNull final String key) {
-        return mCacheManager.removeByKey(key);
+        return mDiskCacheManager.removeByKey(key);
     }
 
     /**
@@ -591,10 +593,10 @@ public final class CacheUtils {
      * @return {@code true}: success<br>{@code false}: fail
      */
     public boolean clear() {
-        return mCacheManager.clear();
+        return mDiskCacheManager.clear();
     }
 
-    private class CacheManager {
+    private static final class DiskCacheManager {
         private final AtomicLong    cacheSize;
         private final AtomicInteger cacheCount;
         private final long          sizeLimit;
@@ -604,7 +606,7 @@ public final class CacheUtils {
         private final File   cacheDir;
         private final Thread mThread;
 
-        private CacheManager(final File cacheDir, final long sizeLimit, final int countLimit) {
+        private DiskCacheManager(final File cacheDir, final long sizeLimit, final int countLimit) {
             this.cacheDir = cacheDir;
             this.sizeLimit = sizeLimit;
             this.countLimit = countLimit;
@@ -738,9 +740,179 @@ public final class CacheUtils {
         }
     }
 
-    private static class CacheHelper {
+    private static byte[] string2Bytes(final String string) {
+        if (string == null) return null;
+        return string.getBytes();
+    }
 
-        static final int timeInfoLen = 14;
+    private static String bytes2String(final byte[] bytes) {
+        if (bytes == null) return null;
+        return new String(bytes);
+    }
+
+    private static byte[] jsonObject2Bytes(final JSONObject jsonObject) {
+        if (jsonObject == null) return null;
+        return jsonObject.toString().getBytes();
+    }
+
+    private static JSONObject bytes2JSONObject(final byte[] bytes) {
+        if (bytes == null) return null;
+        try {
+            return new JSONObject(new String(bytes));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static byte[] jsonArray2Bytes(final JSONArray jsonArray) {
+        if (jsonArray == null) return null;
+        return jsonArray.toString().getBytes();
+    }
+
+    private static JSONArray bytes2JSONArray(final byte[] bytes) {
+        if (bytes == null) return null;
+        try {
+            return new JSONArray(new String(bytes));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private static byte[] parcelable2Bytes(final Parcelable parcelable) {
+        if (parcelable == null) return null;
+        Parcel parcel = Parcel.obtain();
+        parcelable.writeToParcel(parcel, 0);
+        byte[] bytes = parcel.marshall();
+        parcel.recycle();
+        return bytes;
+    }
+
+    private static <T> T bytes2Parcelable(final byte[] bytes,
+                                          final Parcelable.Creator<T> creator) {
+        if (bytes == null) return null;
+        Parcel parcel = Parcel.obtain();
+        parcel.unmarshall(bytes, 0, bytes.length);
+        parcel.setDataPosition(0);
+        T result = creator.createFromParcel(parcel);
+        parcel.recycle();
+        return result;
+    }
+
+    private static byte[] serializable2Bytes(final Serializable serializable) {
+        if (serializable == null) return null;
+        ByteArrayOutputStream baos;
+        ObjectOutputStream oos = null;
+        try {
+            oos = new ObjectOutputStream(baos = new ByteArrayOutputStream());
+            oos.writeObject(serializable);
+            return baos.toByteArray();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            try {
+                if (oos != null) {
+                    oos.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static Object bytes2Object(final byte[] bytes) {
+        if (bytes == null) return null;
+        ObjectInputStream ois = null;
+        try {
+            ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
+            return ois.readObject();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            try {
+                if (ois != null) {
+                    ois.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private static byte[] bitmap2Bytes(final Bitmap bitmap) {
+        if (bitmap == null) return null;
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
+        return baos.toByteArray();
+    }
+
+    private static Bitmap bytes2Bitmap(final byte[] bytes) {
+        return (bytes == null || bytes.length <= 0)
+                ? null
+                : BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
+    }
+
+    private static byte[] drawable2Bytes(final Drawable drawable) {
+        return drawable == null ? null : bitmap2Bytes(drawable2Bitmap(drawable));
+    }
+
+    private static Drawable bytes2Drawable(final byte[] bytes) {
+        return bytes == null ? null : bitmap2Drawable(bytes2Bitmap(bytes));
+    }
+
+    private static Bitmap drawable2Bitmap(final Drawable drawable) {
+        if (drawable instanceof BitmapDrawable) {
+            BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
+            if (bitmapDrawable.getBitmap() != null) {
+                return bitmapDrawable.getBitmap();
+            }
+        }
+        Bitmap bitmap;
+        if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
+            bitmap = Bitmap.createBitmap(
+                    1,
+                    1,
+                    drawable.getOpacity() != PixelFormat.OPAQUE
+                            ? Bitmap.Config.ARGB_8888
+                            : Bitmap.Config.RGB_565
+            );
+        } else {
+            bitmap = Bitmap.createBitmap(
+                    drawable.getIntrinsicWidth(),
+                    drawable.getIntrinsicHeight(),
+                    drawable.getOpacity() != PixelFormat.OPAQUE
+                            ? Bitmap.Config.ARGB_8888
+                            : Bitmap.Config.RGB_565
+            );
+        }
+        Canvas canvas = new Canvas(bitmap);
+        drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+        drawable.draw(canvas);
+        return bitmap;
+    }
+
+    private static Drawable bitmap2Drawable(final Bitmap bitmap) {
+        return bitmap == null
+                ? null
+                : new BitmapDrawable(Utils.getApp().getResources(), bitmap);
+    }
+
+    private static boolean isSpace(final String s) {
+        if (s == null) return true;
+        for (int i = 0, len = s.length(); i < len; ++i) {
+            if (!Character.isWhitespace(s.charAt(i))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static final class DiskCacheHelper {
+
+        static final int TIME_INFO_LEN = 14;
 
         private static byte[] newByteArrayWithTime(final int second, final byte[] data) {
             byte[] time = createDueTime(second).getBytes();
@@ -782,7 +954,7 @@ public final class CacheUtils {
 
         private static byte[] getDataWithoutDueTime(final byte[] data) {
             if (hasTimeInfo(data)) {
-                return copyOfRange(data, timeInfoLen, data.length);
+                return copyOfRange(data, TIME_INFO_LEN, data.length);
             }
             return data;
         }
@@ -797,7 +969,7 @@ public final class CacheUtils {
 
         private static boolean hasTimeInfo(final byte[] data) {
             return data != null
-                    && data.length >= timeInfoLen
+                    && data.length >= TIME_INFO_LEN
                     && data[0] == '_'
                     && data[1] == '$'
                     && data[12] == '$'
@@ -813,7 +985,13 @@ public final class CacheUtils {
             } catch (IOException e) {
                 e.printStackTrace();
             } finally {
-                CloseUtils.closeIO(fc);
+                try {
+                    if (fc != null) {
+                        fc.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
@@ -830,166 +1008,14 @@ public final class CacheUtils {
                 e.printStackTrace();
                 return null;
             } finally {
-                CloseUtils.closeIO(fc);
-            }
-        }
-
-        private static byte[] string2Bytes(final String string) {
-            if (string == null) return null;
-            return string.getBytes();
-        }
-
-        private static String bytes2String(final byte[] bytes) {
-            if (bytes == null) return null;
-            return new String(bytes);
-        }
-
-        private static byte[] jsonObject2Bytes(final JSONObject jsonObject) {
-            if (jsonObject == null) return null;
-            return jsonObject.toString().getBytes();
-        }
-
-        private static JSONObject bytes2JSONObject(final byte[] bytes) {
-            if (bytes == null) return null;
-            try {
-                return new JSONObject(new String(bytes));
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        private static byte[] jsonArray2Bytes(final JSONArray jsonArray) {
-            if (jsonArray == null) return null;
-            return jsonArray.toString().getBytes();
-        }
-
-        private static JSONArray bytes2JSONArray(final byte[] bytes) {
-            if (bytes == null) return null;
-            try {
-                return new JSONArray(new String(bytes));
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        private static byte[] parcelable2Bytes(final Parcelable parcelable) {
-            if (parcelable == null) return null;
-            Parcel parcel = Parcel.obtain();
-            parcelable.writeToParcel(parcel, 0);
-            byte[] bytes = parcel.marshall();
-            parcel.recycle();
-            return bytes;
-        }
-
-        private static <T> T bytes2Parcelable(final byte[] bytes,
-                                              final Parcelable.Creator<T> creator) {
-            if (bytes == null) return null;
-            Parcel parcel = Parcel.obtain();
-            parcel.unmarshall(bytes, 0, bytes.length);
-            parcel.setDataPosition(0);
-            T result = creator.createFromParcel(parcel);
-            parcel.recycle();
-            return result;
-        }
-
-        private static byte[] serializable2Bytes(final Serializable serializable) {
-            if (serializable == null) return null;
-            ByteArrayOutputStream baos;
-            ObjectOutputStream oos = null;
-            try {
-                oos = new ObjectOutputStream(baos = new ByteArrayOutputStream());
-                oos.writeObject(serializable);
-                return baos.toByteArray();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            } finally {
-                CloseUtils.closeIO(oos);
-            }
-        }
-
-        private static Object bytes2Object(final byte[] bytes) {
-            if (bytes == null) return null;
-            ObjectInputStream ois = null;
-            try {
-                ois = new ObjectInputStream(new ByteArrayInputStream(bytes));
-                return ois.readObject();
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            } finally {
-                CloseUtils.closeIO(ois);
-            }
-        }
-
-        private static byte[] bitmap2Bytes(final Bitmap bitmap) {
-            if (bitmap == null) return null;
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, baos);
-            return baos.toByteArray();
-        }
-
-        private static Bitmap bytes2Bitmap(final byte[] bytes) {
-            return (bytes == null || bytes.length == 0)
-                    ? null
-                    : BitmapFactory.decodeByteArray(bytes, 0, bytes.length);
-        }
-
-        private static byte[] drawable2Bytes(final Drawable drawable) {
-            return drawable == null ? null : bitmap2Bytes(drawable2Bitmap(drawable));
-        }
-
-        private static Drawable bytes2Drawable(final byte[] bytes) {
-            return bytes == null ? null : bitmap2Drawable(bytes2Bitmap(bytes));
-        }
-
-        private static Bitmap drawable2Bitmap(final Drawable drawable) {
-            if (drawable instanceof BitmapDrawable) {
-                BitmapDrawable bitmapDrawable = (BitmapDrawable) drawable;
-                if (bitmapDrawable.getBitmap() != null) {
-                    return bitmapDrawable.getBitmap();
+                try {
+                    if (fc != null) {
+                        fc.close();
+                    }
+                } catch (IOException e) {
+                    e.printStackTrace();
                 }
             }
-            Bitmap bitmap;
-            if (drawable.getIntrinsicWidth() <= 0 || drawable.getIntrinsicHeight() <= 0) {
-                bitmap = Bitmap.createBitmap(
-                        1,
-                        1,
-                        drawable.getOpacity() != PixelFormat.OPAQUE
-                                ? Bitmap.Config.ARGB_8888
-                                : Bitmap.Config.RGB_565
-                );
-            } else {
-                bitmap = Bitmap.createBitmap(
-                        drawable.getIntrinsicWidth(),
-                        drawable.getIntrinsicHeight(),
-                        drawable.getOpacity() != PixelFormat.OPAQUE
-                                ? Bitmap.Config.ARGB_8888
-                                : Bitmap.Config.RGB_565
-                );
-            }
-            Canvas canvas = new Canvas(bitmap);
-            drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
-            drawable.draw(canvas);
-            return bitmap;
         }
-
-        private static Drawable bitmap2Drawable(final Bitmap bitmap) {
-            return bitmap == null
-                    ? null
-                    : new BitmapDrawable(Utils.getApp().getResources(), bitmap);
-        }
-    }
-
-    private static boolean isSpace(final String s) {
-        if (s == null) return true;
-        for (int i = 0, len = s.length(); i < len; ++i) {
-            if (!Character.isWhitespace(s.charAt(i))) {
-                return false;
-            }
-        }
-        return true;
     }
 }
